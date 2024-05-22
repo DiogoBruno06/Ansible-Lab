@@ -1,0 +1,60 @@
+---
+- name: Atualizar o cache do APT # apt update
+  apt:
+    update_cache: yes
+
+- name: Instalar pacotes necessários
+  apt:
+    name:
+      - apt-transport-https
+      - ca-certificates
+      - curl
+      - software-properties-common
+    state: present
+
+- name: Adicionar a chave GPG oficial do Docker
+  apt_key:
+    url: https://download.docker.com/linux/ubuntu/gpg
+    state: present
+
+- name: Adicionar repositório do Docker
+  apt_repository:
+    repo: deb [arch=amd64] https://download.docker.com/linux/ubuntu focal stable
+    state: present
+
+- name: Atualizar novamente o índice do APT
+  apt:
+    update_cache: yes
+
+- name: Instalar o Docker
+  apt:
+    name: docker-ce
+    state: present
+
+- name: Baixar o Docker Compose
+  shell: >
+    curl -L https://github.com/docker/compose/releases/download/1.29.2/docker-compose-$(uname -s)-$(uname -m)
+    -o /usr/local/bin/docker-compose
+
+- name: Aplicar permissões executáveis ao binário do Docker Compose
+  file:
+    path: /usr/local/bin/docker-compose
+    mode: '0755'
+
+- name: Adicionar o usuário ao grupo docker
+  user:
+    name: "{{ ansible_user_id }}"
+    groups: docker
+    append: yes
+
+- name: Garantir que o serviço Docker está em execução
+  service:
+    name: docker
+    state: started
+    enabled: true
+
+- name: Executar um comando Docker para garantir que as permissões foram aplicadas
+  shell: |
+    newgrp docker <<EONG
+    docker ps
+    EONG
